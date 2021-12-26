@@ -26,8 +26,12 @@ struct StyleStruct {
 /// https://zh.wikipedia.org/wiki/ANSI%E8%BD%AC%E4%B9%89%E5%BA%8F%E5%88%97#%E9%80%89%E6%8B%A9%E5%9B%BE%E5%BD%A2%E5%86%8D%E7%8E%B0%EF%BC%88SGR%EF%BC%89%E5%8F%82%E6%95%B0
 ///
 impl Colour {
-    pub fn paint(&self, input: String) -> String {
-        format!("\x1B[{}m{}\x1B[0m", *self as usize, input)
+    pub fn paint(&self, input: &[u8]) -> String {
+        format!(
+            "\x1B[{}m{}\x1B[0m",
+            *self as usize,
+            std::str::from_utf8(input).unwrap()
+        )
     }
 
     pub fn underline(&self) -> Style {
@@ -65,9 +69,9 @@ impl Colour {
 }
 
 impl Style {
-    pub fn paint(&self, input: String) -> String {
+    pub fn paint(&self, input: &[u8]) -> String {
         match self {
-            Style::Plain => input,
+            Style::Plain => String::from_utf8(input.to_vec()).unwrap(),
             Style::Foreground(colour) => colour.paint(input),
             Style::CustomStyle(s) => match s {
                 StyleStruct {
@@ -84,7 +88,11 @@ impl Style {
                     let un = if *underline { "4;" } else { "" };
                     format!(
                         "\x1B[{}{}{}{}m{}\x1B[0m",
-                        bo, un, bg, *foreground as usize, input
+                        bo,
+                        un,
+                        bg,
+                        *foreground as usize,
+                        std::str::from_utf8(input).unwrap()
                     )
                 }
             },

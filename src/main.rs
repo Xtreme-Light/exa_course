@@ -37,6 +37,7 @@ pub fn list(path: &Path) {
     files.iter().for_each(|e| {
         let file_name_os = e.file_name();
         let file_name: &OsStr = file_name_os.as_ref();
+        let bytes = file_name.as_bytes();
         // 获取文件类型
         let meta = match fs::metadata(e.path()) {
             Ok(meta) => meta,
@@ -46,21 +47,17 @@ pub fn list(path: &Path) {
             }
         };
         // 权限部分和文件名字部分，分成两部分着色
-        let colour = file_colour(&meta, file_name);
-        println!(
-            "{} {}",
-            perm_str(&meta),
-            colour.paint(file_name.to_str().unwrap().to_string())
-        )
+        let colour = file_colour(&meta, bytes);
+        println!("{} {}", perm_str(&meta), colour.paint(bytes))
     });
 }
 
-fn file_colour(metadata: &Metadata, file_name: &OsStr) -> Style {
+fn file_colour(metadata: &Metadata, bytes: &[u8]) -> Style {
     if metadata.is_dir() {
         Blue.normal()
     } else if metadata.permissions().mode() & 0o111 == 0o111 {
         Green.normal()
-    } else if file_name.as_bytes().ends_with(b"~") {
+    } else if bytes.ends_with(b"~") {
         Black.bold()
     } else {
         Plain
@@ -68,43 +65,43 @@ fn file_colour(metadata: &Metadata, file_name: &OsStr) -> Style {
 }
 
 fn perm_str(metadata: &Metadata) -> String {
-    let permission = metadata.permissions().mode();
+    let permission: u32 = metadata.permissions().mode();
     format!(
         "{}{}{}{}{}{}{}{}{}{}",
         type_char(&metadata.file_type()),
-        bit(permission, 0o100, String::from("r"), Yellow.bold()),
-        bit(permission, 0o300, String::from("w"), Red.bold()),
-        bit(permission, 0o700, String::from("x"), Green.bold()),
-        bit(permission, 0o010, String::from("r"), Yellow.bold()),
-        bit(permission, 0o030, String::from("w"), Red.bold()),
-        bit(permission, 0o070, String::from("x"), Green.bold()),
-        bit(permission, 0o001, String::from("r"), Yellow.bold()),
-        bit(permission, 0o003, String::from("w"), Red.bold()),
-        bit(permission, 0o007, String::from("x"), Green.bold()),
+        bit(permission, 0o100, b'r', Yellow.bold()),
+        bit(permission, 0o300, b'w', Red.bold()),
+        bit(permission, 0o700, b'x', Green.bold()),
+        bit(permission, 0o010, b'r', Yellow.bold()),
+        bit(permission, 0o030, b'w', Red.bold()),
+        bit(permission, 0o070, b'x', Green.bold()),
+        bit(permission, 0o001, b'r', Yellow.bold()),
+        bit(permission, 0o003, b'w', Red.bold()),
+        bit(permission, 0o007, b'x', Green.bold()),
     )
 }
-fn bit(permission: u32, bit: u32, other: String, style: Style) -> String {
+fn bit(permission: u32, bit: u32, other: u8, style: Style) -> String {
     if permission & bit == bit {
-        style.paint(other)
+        style.paint(&[other])
     } else {
-        Cyan.paint(String::from(r"-"))
+        Cyan.paint(b"-")
     }
 }
 fn type_char(file_type: &FileType) -> String {
     use std::os::unix::fs::FileTypeExt;
     if file_type.is_dir() {
-        Blue.paint(String::from("d"))
+        Blue.paint(&[b'd'])
     } else if file_type.is_file() {
-        String::from(".")
+        ".".to_string()
     } else if file_type.is_symlink() {
-        Cyan.paint(String::from("l"))
+        Cyan.paint(&[b'l'])
     } else if file_type.is_block_device() {
-        Purple.paint(String::from("s"))
+        Purple.paint(&[b's'])
     } else if file_type.is_char_device() {
-        Yellow.paint(String::from("|"))
+        Yellow.paint(&[b'|'])
     } else if file_type.is_fifo() {
-        String::from("f")
+        "f".to_string()
     } else {
-        String::from("?")
+        "?".to_string()
     }
 }
