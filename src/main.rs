@@ -24,6 +24,29 @@ fn main() {
         list(Path::new(arg_ref));
     }
 }
+
+trait Column {
+    fn display(&self, metadata: &Metadata, filename: String) -> String;
+}
+impl Column for std::fs::Permissions {
+    fn display(&self, metadata: &Metadata, filename: String) -> String {
+        // file_colour(metadata,filename.as_bytes()).paint(filename.as_bytes())
+        format!(
+            "{}{}{}{}{}{}{}{}{}{}",
+            type_char(&metadata.file_type()),
+            bit(self.mode(), 0o100, b'r', Yellow.bold()),
+            bit(self.mode(), 0o300, b'w', Red.bold()),
+            bit(self.mode(), 0o700, b'x', Green.bold()),
+            bit(self.mode(), 0o010, b'r', Yellow.bold()),
+            bit(self.mode(), 0o030, b'w', Red.bold()),
+            bit(self.mode(), 0o070, b'x', Green.bold()),
+            bit(self.mode(), 0o001, b'r', Yellow.bold()),
+            bit(self.mode(), 0o003, b'w', Red.bold()),
+            bit(self.mode(), 0o007, b'x', Green.bold()),
+        )
+    }
+}
+
 pub fn list(path: &Path) {
     let dir = match fs::read_dir(path) {
         Ok(dir) => dir,
@@ -47,8 +70,14 @@ pub fn list(path: &Path) {
             }
         };
         // 权限部分和文件名字部分，分成两部分着色
-        let colour = file_colour(&meta, bytes);
-        println!("{} {}", perm_str(&meta), colour.paint(bytes))
+        // let colour = file_colour(&meta, bytes);
+        let permissions = &meta.permissions();
+        let mode = permissions.mode();
+        println!(
+            "{} {}",
+            permissions.display(&meta, String::from_utf8(bytes.to_vec()).unwrap()),
+            file_colour(&meta, bytes).paint(bytes)
+        )
     });
 }
 
@@ -64,22 +93,6 @@ fn file_colour(metadata: &Metadata, bytes: &[u8]) -> Style {
     }
 }
 
-fn perm_str(metadata: &Metadata) -> String {
-    let permission: u32 = metadata.permissions().mode();
-    format!(
-        "{}{}{}{}{}{}{}{}{}{}",
-        type_char(&metadata.file_type()),
-        bit(permission, 0o100, b'r', Yellow.bold()),
-        bit(permission, 0o300, b'w', Red.bold()),
-        bit(permission, 0o700, b'x', Green.bold()),
-        bit(permission, 0o010, b'r', Yellow.bold()),
-        bit(permission, 0o030, b'w', Red.bold()),
-        bit(permission, 0o070, b'x', Green.bold()),
-        bit(permission, 0o001, b'r', Yellow.bold()),
-        bit(permission, 0o003, b'w', Red.bold()),
-        bit(permission, 0o007, b'x', Green.bold()),
-    )
-}
 fn bit(permission: u32, bit: u32, other: u8, style: Style) -> String {
     if permission & bit == bit {
         style.paint(&[other])
