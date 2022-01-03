@@ -1,5 +1,5 @@
-use crate::colours::Colour::{Black, Blue, Cyan, Green, Purple, Red, Yellow};
-use crate::colours::Style;
+use crate::colour::Colour::{Black, Blue, Cyan, Green, Purple, Red, Yellow};
+use crate::colour::Style;
 use crate::Style::Plain;
 use std::env;
 use std::env::ArgsOs;
@@ -7,23 +7,18 @@ use std::ffi::{OsStr, OsString};
 use std::fmt::Formatter;
 use std::fs;
 use std::fs::{DirEntry, FileType, Metadata};
-use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::os::unix::prelude;
 use std::path::{Path, PathBuf};
 use std::process::exit;
 
-mod colours;
+mod colour;
+mod option;
 
 fn main() {
     let args: Vec<OsString> = env::args_os().skip(1).collect();
-    if args.len() == 0 {
-        unreachable!()
-    }
-    for arg in args.iter() {
-        let arg_ref: &OsStr = arg.as_ref();
-        list(Path::new(arg_ref));
-    }
+    let result = option::Options::parse(args.iter().map(|e| e.as_ref()));
+    println!("{:?}", result);
 }
 struct FileHolder<'a> {
     name: &'a OsStr,
@@ -63,39 +58,7 @@ impl<'a> std::fmt::Display for FileHolder<'a> {
         )
     }
 }
-trait Column {
-    fn display(&self, metadata: &Metadata, filename: String) -> String;
-}
-impl Column for std::fs::Permissions {
-    fn display(&self, metadata: &Metadata, filename: String) -> String {
-        // file_colour(metadata,filename.as_bytes()).paint(filename.as_bytes())
-        format!(
-            "{}{}{}{}{}{}{}{}{}{}",
-            type_char(&metadata.file_type()),
-            bit(self.mode(), 0o100, b'r', Yellow.bold()),
-            bit(self.mode(), 0o300, b'w', Red.bold()),
-            bit(self.mode(), 0o700, b'x', Green.bold()),
-            bit(self.mode(), 0o010, b'r', Yellow.bold()),
-            bit(self.mode(), 0o030, b'w', Red.bold()),
-            bit(self.mode(), 0o070, b'x', Green.bold()),
-            bit(self.mode(), 0o001, b'r', Yellow.bold()),
-            bit(self.mode(), 0o003, b'w', Red.bold()),
-            bit(self.mode(), 0o007, b'x', Green.bold()),
-        )
-    }
-}
-struct FileSize;
-impl Column for FileSize {
-    fn display(&self, metadata: &Metadata, filename: String) -> String {
-        let str_size = format_bytes(metadata.size(), 1024, &["B  ", "KiB", "MiB", "GiB", "TiB"]);
-        return if metadata.is_dir() {
-            Green.normal()
-        } else {
-            Green.bold()
-        }
-        .paint(str_size.as_bytes());
-    }
-}
+
 pub fn format_bytes(mut size: u64, kilo: u64, prefixes: &[&str]) -> String {
     let mut prefix = 0;
     while size > kilo {

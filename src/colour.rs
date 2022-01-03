@@ -16,7 +16,7 @@ pub enum Style {
     Foreground(Colour),
     CustomStyle(StyleStruct),
 }
-struct StyleStruct {
+pub struct StyleStruct {
     foreground: Colour,
     background: Option<Colour>,
     bold: bool,
